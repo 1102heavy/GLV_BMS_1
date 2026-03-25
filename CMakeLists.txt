@@ -36,6 +36,8 @@ add_executable(${CMAKE_PROJECT_NAME}
     Core/Src/main.c
     Core/Src/TLE9012dqu.c
     Core/Src/uart_dma.c
+    Core/Src/i2c.c
+    Core/Src/ina228.c
     Core/Src/stm32f4xx_it.c
     Core/Src/stm32f4xx_hal_msp.c
     startup_stm32f446xx.s

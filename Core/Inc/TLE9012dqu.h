@@ -1,44 +1,28 @@
-#ifndef __TLE9012DQU_H__
-#define __TLE9012DQU_H__
+#ifndef __TLE9012dqu_H__
+#define __TLE9012dqu_H__
 
 #include "stm32f4xx.h"
-#include <stdint.h>
-#include <stddef.h>
+#include "stdint.h"
 
-typedef enum
-{
-    TLE9012_OK = 0,
-    TLE9012_ERR_NULL,
-    TLE9012_ERR_PARAM,
-    TLE9012_ERR_TIMEOUT,
-    TLE9012_ERR_IO
-} TLE9012_Status_t;
+void TLE9012_dqu_Wakeup(void);
+void TLE9012_Readback_Config(uint8_t *response_buff);
+void Reset_Watch_dog_counter(void);
+void Enable_Cell_Monitoring (uint16_t Number_of_Cells);
+void Read_Cell_Voltages(uint8_t *buffer, uint8_t number_of_cells, uint16_t *cell_voltages_raw, float *cell_voltages);
+void Set_UnderVoltage_Threshold(float UV_threshold);
+void Set_OverVoltage_Threshold(float OV_Threshold);
+void Activate_ERRORS (uint16_t Errors);
+void Set_Undervoltage_Cells (uint16_t Number_of_cells, uint16_t reset);
+uint16_t Read_Undervoltage_Flags(void);
 
-typedef struct
-{
-    uint16_t num_cells;
-    uint8_t tx_buf[8];
-    uint8_t rx_buf[8];
-} TLE9012_Handle_t;
+void Set_Balancing_Current_Threshold(uint16_t Under_Current_Threshold, uint16_t Over_Current_Threshold);
+void Set_Balancing_Cells(uint16_t Number_of_cells, uint16_t reset);
+void Enable_Balancing_on_Cell(uint8_t Cell_Number);
+void Disable_Balancing_on_Cell(uint8_t Cell_Number);
+void Disable_All_Balancing(void);
+uint16_t Auto_Balance_Cells_With_Offset(float *cell_voltages, uint8_t number_of_cells, uint8_t starting_cell, float delta_voltage, float minimum_cell_voltage);
+uint16_t Balance_To_Minimum(float *cell_voltages, uint8_t number_of_cells, uint8_t bit_offset);
 
-/* Init / basic control */
-TLE9012_Status_t TLE9012_Init(TLE9012_Handle_t *dev, uint16_t num_cells);
-TLE9012_Status_t TLE9012_Wakeup(TLE9012_Handle_t *dev);
-TLE9012_Status_t TLE9012_ResetWatchdog(TLE9012_Handle_t *dev);
-
-/* Configuration */
-TLE9012_Status_t TLE9012_EnableCellMonitoring(TLE9012_Handle_t *dev, uint16_t num_cells);
-TLE9012_Status_t TLE9012_SetUnderVoltageThreshold(TLE9012_Handle_t *dev, float uv_threshold);
-TLE9012_Status_t TLE9012_SetOverVoltageThreshold(TLE9012_Handle_t *dev, float ov_threshold);
-TLE9012_Status_t TLE9012_SetUndervoltageCells(TLE9012_Handle_t *dev, uint16_t number_of_cells, uint16_t reset);
-TLE9012_Status_t TLE9012_ActivateErrors(TLE9012_Handle_t *dev, uint16_t errors);
-
-/* Readback */
-TLE9012_Status_t TLE9012_ReadbackConfig(TLE9012_Handle_t *dev, uint8_t *response, size_t len);
-TLE9012_Status_t TLE9012_ReadUnderVoltageFlags(TLE9012_Handle_t *dev, uint16_t *flags);
-TLE9012_Status_t TLE9012_ReadCellVoltages(TLE9012_Handle_t *dev,
-                                           uint16_t *cell_voltages_raw,
-                                           float *cell_voltages,
-                                           uint8_t number_of_cells);
+uint16_t Read_General_Diagnostics(void);
 
 #endif

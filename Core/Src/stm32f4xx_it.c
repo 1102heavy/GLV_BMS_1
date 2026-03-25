@@ -80,11 +80,54 @@ void NMI_Handler(void)
 
 /**
   * @brief This function handles Hard fault interrupt.
+  *
+  * Fault registers are captured into a volatile struct so they remain visible
+  * in the GDB watch window.  In GDB, run:
+  *   print fault_regs
+  * to see the exact fault type after a HardFault.
+  *
+  * Key registers:
+  *   hfsr  — HardFault Status Register  (SCB->HFSR)
+  *   cfsr  — Configurable Fault Status   (SCB->CFSR)
+  *             bits [7:0]   = MemManage fault flags
+  *             bits [15:8]  = BusFault flags  (BFARVALID, PRECISERR, etc.)
+  *             bits [31:16] = UsageFault flags (INVPC, NOCP, INVSTATE, etc.)
+  *   bfar  — Bus Fault Address Register  (valid when cfsr bit BFARVALID set)
+  *   mmfar — MemManage Address Register
   */
+/* USER CODE BEGIN HardFault_IRQn 0 */
+typedef struct {
+    volatile uint32_t hfsr;         /* HardFault Status Register              */
+    volatile uint32_t cfsr;         /* Configurable Fault Status Register      */
+    volatile uint32_t bfar;         /* Bus Fault Address Register              */
+    volatile uint32_t mmfar;        /* MemManage Fault Address Register        */
+    volatile uint32_t stacked_pc;   /* PC at the moment the fault fired        */
+    volatile uint32_t stacked_lr;   /* LR at the moment the fault fired        */
+    volatile uint32_t stacked_r0;   /* R0 (first function argument)            */
+} FaultRegs_t;
+
+volatile FaultRegs_t fault_regs;
+/* USER CODE END HardFault_IRQn 0 */
+
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
+  fault_regs.hfsr  = SCB->HFSR;
+  fault_regs.cfsr  = SCB->CFSR;
+  fault_regs.bfar  = SCB->BFAR;
+  fault_regs.mmfar = SCB->MMFAR;
 
+  /* Read the stacked exception frame from MSP.
+   * On bare-metal (no RTOS) the active stack is always MSP.
+   * Cortex-M exception frame layout at SP:
+   *   [0]=R0  [1]=R1  [2]=R2  [3]=R3  [4]=R12  [5]=LR  [6]=PC  [7]=xPSR */
+  uint32_t *frame = (uint32_t *)__get_MSP();
+  fault_regs.stacked_r0 = frame[0];
+  fault_regs.stacked_lr = frame[5];
+  fault_regs.stacked_pc = frame[6];   /* <-- exact instruction that faulted */
+
+  /* Clear FORCED bit so the fault registers stay readable */
+  SCB->HFSR = SCB->HFSR;
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
@@ -182,13 +225,7 @@ void PendSV_Handler(void)
   */
 void SysTick_Handler(void)
 {
-  /* USER CODE BEGIN SysTick_IRQn 0 */
-
-  /* USER CODE END SysTick_IRQn 0 */
-  HAL_IncTick();
-  /* USER CODE BEGIN SysTick_IRQn 1 */
-
-  /* USER CODE END SysTick_IRQn 1 */
+  /* Bare-metal project — no HAL tick required */
 }
 
 /******************************************************************************/

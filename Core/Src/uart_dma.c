@@ -82,10 +82,9 @@ char uart_data_buffer[UART_DATA_BUFF_SIZE];
 //TLE9012DQU overall Frame Buffer
 uint8_t tx_buff[6];
 
-uint8_t g_rx_cmplt;
-uint8_t g_tx_cmplt;
-
-uint8_t g_uart_cmplt;
+volatile uint8_t g_rx_cmplt;
+volatile uint8_t g_tx_cmplt;
+volatile uint8_t g_uart_cmplt;
 
 
 // PC2 = Charge Interrupt output
@@ -313,9 +312,12 @@ void uart1_rx_tx_half_duplex_init(void)
 
 	/*6. Enable clock access to UART1*/
 	RCC->APB2ENR |= UART1EN;
+	/* APB2 clock has 2-cycle activation latency — dummy read forces the write
+	 * to complete before any USART1 register access. */
+	{ volatile uint32_t tmpreg = RCC->APB2ENR; (void)tmpreg; }
 
 	/*7. Set baudrate*/
-	uart_set_baudrate(CLK,UART_BAUDRATE);
+	USART1->BRR = compute_uart_bd(CLK, UART_BAUDRATE);
 
 	/*8. Select to use DMA for TX and RX*/
 	USART1->CR3 = CR3_DMAT |CR3_DMAR;
@@ -339,7 +341,7 @@ void uart1_rx_tx_half_duplex_init(void)
 	/*12. Enable uart module*/
 	 USART1->CR1 |= CR1_UE;
 
-	 /*13.Enable USART2 interrupt in the NVIC*/
+	 /*13.Enable USART1 interrupt in the NVIC*/
 	 NVIC_EnableIRQ(USART1_IRQn);
 
 }
@@ -528,9 +530,6 @@ void dma2_stream2_uart_rx_config(uint8_t *buf, uint8_t len)
 	/*Enable transfer complete interrupt*/
 	DMA2_Stream2->CR |= DMA_SCR_TCIE;
 
-	/*Enable Circular mode*/
-	DMA2_Stream2->CR |=DMA_SCR_CIRC;
-
 	/*Set transfer direction : Periph to Mem*/
 	DMA2_Stream2->CR &=~(1U<<6);
 	DMA2_Stream2->CR &=~(1U<<7);
@@ -538,7 +537,7 @@ void dma2_stream2_uart_rx_config(uint8_t *buf, uint8_t len)
 	/*Enable DMA stream*/
 	DMA2_Stream2->CR |= DMA_SCR_EN;
 
-	/*Enable DMA Stream5 Interrupt in NVIC*/
+	/*Enable DMA Stream2 Interrupt in NVIC*/
 	NVIC_EnableIRQ(DMA2_Stream2_IRQn);
 
 }
@@ -709,6 +708,13 @@ void timer5_init()
 {
 	//1. Give Clock access to timer 5
 	RCC->APB1ENR |= TIM5EN;
+
+	/* Mandatory barrier: APB peripheral clock has a 2-cycle activation latency.
+	 * Without this dummy read the bus arbiter can fault on the very next
+	 * TIM5 register access.  ST HAL uses the same pattern in every RCC enable
+	 * macro (see __HAL_RCC_TIMx_CLK_ENABLE). */
+	volatile uint32_t tmpreg = RCC->APB1ENR;
+	(void)tmpreg;
 
 	//2. Switch off the counter in the control register
 	TIM5 -> CR1 &= ~(TIM5CEN);
